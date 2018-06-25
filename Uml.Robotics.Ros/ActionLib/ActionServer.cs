@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 using Messages.std_msgs;
 using Uml.Robotics.Ros.ActionLib.Interfaces;
@@ -16,7 +17,7 @@ namespace Uml.Robotics.Ros.ActionLib
     {
         public int QueueSize { get; set; } = 50;
         public TimeSpan StatusListTimeout { get; private set; } = new TimeSpan(0, 0, 5);
-        public double StatusFrequencySeconds { get; private set; } = 5;
+        public double StatusFrequencyHz { get; private set; } = 5;
 
         private const string ACTIONLIB_STATUS_FREQUENCY = "actionlib_status_frequency";
         private const string STATUS_LIST_TIMEOUT = "status_list_timeout";
@@ -31,10 +32,9 @@ namespace Uml.Robotics.Ros.ActionLib
         private Publisher<GoalStatusArray> goalStatusPublisher;
         private Subscriber goalSubscriber;
         private Subscriber cancelSubscriber;
-        private TimeSpan statusInterval;
-        private DateTime nextStatusPublishTime;
         private long spinCallbackId = 0;
-
+        private Timer timer;
+        private object lockGoalHandles;
 
         public ActionServer(NodeHandle nodeHandle, string actionName)
         {
@@ -42,6 +42,7 @@ namespace Uml.Robotics.Ros.ActionLib
             this.nodeHandle = new NodeHandle(nodeHandle, actionName);
             this.lastCancel = DateTime.UtcNow;
             this.started = false;
+            this.lockGoalHandles = new object();
         }
 
 
@@ -101,29 +102,22 @@ namespace Uml.Robotics.Ros.ActionLib
             // Read the frequency with which to publish status from the parameter server
             // If not specified locally explicitly, use search param to find actionlib_status_frequency
             double statusFrequency;
-            bool success = Param.Get(ACTIONLIB_STATUS_FREQUENCY, out statusFrequency);
+            bool success = Param.Get(ACTIONLIB_STATUS_FREQUENCY, out statusFrequency, 5.0);
             if (success)
             {
-                StatusFrequencySeconds = statusFrequency;
+                StatusFrequencyHz = statusFrequency;
             }
 
             double statusListTimeout;
-            success = Param.Get(STATUS_LIST_TIMEOUT, out statusListTimeout);
+            success = Param.Get(STATUS_LIST_TIMEOUT, out statusListTimeout, 5.0);
             if (success)
             {
                 var split = SplitSeconds(statusListTimeout);
                 StatusListTimeout = new TimeSpan(0, 0, split.seconds, split.milliseconds);
             }
 
-            if (StatusFrequencySeconds > 0)
-            {
-                var split = SplitSeconds(StatusFrequencySeconds);
-                statusInterval = new TimeSpan(0, 0, split.seconds, split.milliseconds);
-                nextStatusPublishTime = DateTime.UtcNow + statusInterval;
-                var cb = new SpinCallbackImplementation(SpinCallback);
-                spinCallbackId = cb.Uid;
-                ROS.GlobalCallbackQueue.AddCallback(cb);
-            }
+            double statusFrequencySeconds = 1.0 / StatusFrequencyHz;
+            timer = new Timer(SpinCallback, null, 0, (int)(statusFrequencySeconds * 1000));
 
             // Message consumers
             goalSubscriber = nodeHandle.Subscribe<GoalActionMessage<TGoal>>("goal", this.QueueSize, GoalCallback);
@@ -175,20 +169,27 @@ namespace Uml.Robotics.Ros.ActionLib
             var goalStatuses = new List<GoalStatus>();
 
             var idsToBeRemoved = new List<string>();
-            foreach (var pair in goalHandles)
-            {
-                goalStatuses.Add(pair.Value.GoalStatus);
 
-                if ((pair.Value.DestructionTime != null) && (pair.Value.DestructionTime + StatusListTimeout < now))
+            lock(lockGoalHandles)
+            {
+                foreach (var pair in goalHandles)
                 {
-                    ROS.Debug()("actionlib", $"Removing server goal handle for goal id: {pair.Value.GoalId.id}");
-                    idsToBeRemoved.Add(pair.Value.GoalId.id);
-                }
-            }
+                    goalStatuses.Add(pair.Value.GoalStatus);
 
-            foreach (string id in idsToBeRemoved)
-            {
-                goalHandles.Remove(id);
+                    if ((pair.Value.DestructionTime != null) && (pair.Value.DestructionTime + StatusListTimeout < now))
+                    {
+                        ROS.Debug()("actionlib", $"Removing server goal handle for goal id: {pair.Value.GoalId.id}");
+                        idsToBeRemoved.Add(pair.Value.GoalId.id);
+                    }
+                }
+
+                statusArray.status_list = goalStatuses.ToArray();
+                goalStatusPublisher.publish(statusArray);
+
+                foreach (string id in idsToBeRemoved)
+                {
+                    goalHandles.Remove(id);
+                }
             }
         }
 
@@ -234,7 +235,10 @@ namespace Uml.Robotics.Ros.ActionLib
                     goalStatus.status = GoalStatus.RECALLING;
                     goalHandle = new ServerGoalHandle<TGoal, TResult, TFeedback>(this, goalId, goalStatus, null);
                     goalHandle.DestructionTime = ROS.GetTime(goalId.stamp);
-                    goalHandles[goalId.id] = goalHandle;
+                    lock(lockGoalHandles)
+                    {
+                        goalHandles[goalId.id] = goalHandle;
+                    }
                 }
 
             }
@@ -279,18 +283,21 @@ namespace Uml.Robotics.Ros.ActionLib
                 var newGoalHandle = new ServerGoalHandle<TGoal, TResult, TFeedback>(this, goalId,
                     goalStatus, goalAction.Goal
                 );
-                goalHandles[goalId.id] = newGoalHandle;
+                newGoalHandle.DestructionTime = ROS.GetTime(goalId.stamp);
+                lock(lockGoalHandles)
+                {
+                    goalHandles[goalId.id] = newGoalHandle;
+                }
                 goalCallback?.Invoke(newGoalHandle);
             }
         }
 
 
-        private void SpinCallback()
+        private void SpinCallback(object state)
         {
-            if (DateTime.UtcNow > nextStatusPublishTime)
-            {
+            if (started)
+            { 
                 PublishStatus();
-                nextStatusPublishTime = DateTime.UtcNow + statusInterval;
             }
         }
 
