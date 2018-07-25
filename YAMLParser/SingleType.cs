@@ -12,15 +12,15 @@ namespace FauxMessages
     public class SingleType
     {
         // TODO extend check to other C# keywords
-        private static readonly string[] CSharpKeywords = { "object", "params" };
-
+        private static readonly string[] CSharpKeywords = { "object", "params", "namespace", "const", "static" };
+        
         private static bool IsCSharpKeyword(string name)
         {
             return CSharpKeywords.Contains(name);
         }
 
-        public bool Const;
-        public string ConstValue = "";
+        public bool Static;
+        public string StaticValue = "";
         public bool IsArray;
         public bool IsLiteral;
         public string Name;
@@ -94,7 +94,7 @@ namespace FauxMessages
         {
             backup = new string[s.Length];
             Array.Copy(s, backup, s.Length);
-            bool isconst = false;
+            bool isstatic = false;
             IsLiteral = isliteral;
             string type = s[0];
             string name = s[1];
@@ -102,7 +102,7 @@ namespace FauxMessages
             if (name.Contains('='))
             {
                 string[] parts = name.Split('=');
-                isconst = true;
+                isstatic = true;
                 name = parts[0];
                 otherstuff = " = " + parts[1];
             }
@@ -116,7 +116,7 @@ namespace FauxMessages
                 otherstuff += " " + s[i];
 
             if (otherstuff.Contains('='))
-                isconst = true;
+                isstatic = true;
 
             if (!IsArray)
             {
@@ -135,12 +135,12 @@ namespace FauxMessages
                 {
                     otherstuff = otherstuff.Replace("-1", "255");
                 }
-                Const = isconst;
+                Static = isstatic;
                 bool wantsconstructor = true;
                 if (otherstuff.Contains("="))
                 {
                     string[] chunks = otherstuff.Split('=');
-                    ConstValue = chunks[chunks.Length - 1].Trim();
+                    StaticValue = chunks[chunks.Length - 1].Trim();
                     if (type.Equals("string", StringComparison.OrdinalIgnoreCase))
                     {
                         otherstuff = chunks[0] + " = \"" + chunks[1].Trim() + "\"";
@@ -148,11 +148,11 @@ namespace FauxMessages
                     }
                 }
                 string prefix = "", suffix = "";
-                if (isconst)
+                if (isstatic)
                 {
                     if (!type.Equals("string", StringComparison.OrdinalIgnoreCase))
                     {
-                        prefix = "const ";
+                        prefix = "static ";
                         wantsconstructor = false;
                     }
                 }
@@ -208,14 +208,14 @@ namespace FauxMessages
 
         public void refinalize(MsgFile parent, string REALTYPE)
         {
-            bool isconst = false;
+            bool isstatic = false;
             Type = REALTYPE;
             string name = backup[1];
             string otherstuff = "";
             if (name.Contains('='))
             {
                 string[] parts = name.Split('=');
-                isconst = true;
+                isstatic = true;
                 name = parts[0];
                 otherstuff = " = " + parts[1];
             }
@@ -226,7 +226,7 @@ namespace FauxMessages
             for (int i = 2; i < backup.Length; i++)
                 otherstuff += " " + backup[i];
             if (otherstuff.Contains('='))
-                isconst = true;
+                isstatic = true;
             parent.resolve(this);
             if (!IsArray)
             {
@@ -245,12 +245,12 @@ namespace FauxMessages
                 {
                     otherstuff = otherstuff.Replace("-1", "255");
                 }
-                Const = isconst;
+                Static = isstatic;
                 bool wantsconstructor = false;
                 if (otherstuff.Contains("="))
                 {
                     string[] chunks = otherstuff.Split('=');
-                    ConstValue = chunks[chunks.Length - 1].Trim();
+                    StaticValue = chunks[chunks.Length - 1].Trim();
                     if (Type.Equals("string", StringComparison.OrdinalIgnoreCase))
                     {
                         otherstuff = chunks[0] + " = \"" + chunks[1].Trim().Replace("\"", "") + "\"";
@@ -261,11 +261,11 @@ namespace FauxMessages
                     wantsconstructor = true;
                 }
                 string prefix = "", suffix = "";
-                if (isconst)
+                if (isstatic)
                 {
                     if (!Type.Equals("string", StringComparison.OrdinalIgnoreCase))
                     {
-                        prefix = "const ";
+                        prefix = "static ";
                     }
                 }
                 if (otherstuff.Contains('='))

@@ -17,7 +17,7 @@ namespace FauxMessages
 
     public class MsgFile
     {
-        private const string stfmat = "\tname: {0}\n\t\ttype: {1}\n\t\ttrostype: {2}\n\t\tisliteral: {3}\n\t\tisconst: {4}\n\t\tconstvalue: {5}\n\t\tisarray: {6}\n\t\tlength: {7}\n\t\tismeta: {8}";
+        private const string stfmat = "\tname: {0}\n\t\ttype: {1}\n\t\ttrostype: {2}\n\t\tisliteral: {3}\n\t\tisstatic: {4}\n\t\tstaticvalue: {5}\n\t\tisarray: {6}\n\t\tlength: {7}\n\t\tismeta: {8}";
 
         public class ResolvedMsg
         {
@@ -585,7 +585,7 @@ namespace FauxMessages
             string leadingWhitespace = "";
             for (int i = 0; i < LEADING_WHITESPACE + extraTabs; i++)
                 leadingWhitespace += "    ";
-            if (st.Const)
+            if (st.Static)
                 return "";
             if (!st.IsArray)
             {
@@ -637,7 +637,7 @@ namespace FauxMessages
             // start of deserializing piece referred to by st is currentIndex (its value at time of call to this fn)"
 
             string pt = KnownStuff.GetNamespacedType(st);
-            if (st.Const)
+            if (st.Static)
             {
                 return "";
             }
@@ -791,7 +791,7 @@ namespace FauxMessages
             // start of deserializing piece referred to by st is currentIndex (its value at time of call to this fn)"
 
             string pt = KnownStuff.GetNamespacedType(st);
-            if (st.Const)
+            if (st.Static)
             {
                 return "";
             }
@@ -980,7 +980,7 @@ namespace FauxMessages
 {0}ret &= {1}.Equals(other.{1});", leadingWhitespace, name);
             else if (st.IsLiteral)
             {
-                if (st.Const)
+                if (st.Static)
                     return "";
                 return string.Format(@"
 {0}ret &= {1} == other.{1};", leadingWhitespace, name);

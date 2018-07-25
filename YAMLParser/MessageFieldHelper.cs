@@ -39,9 +39,9 @@ namespace FauxMessages
                     members.Name.Replace("@", ""),
                     members.IsLiteral.ToString().ToLower(),
                     ("typeof(" + pt + ")"),
-                    members.Const.ToString().ToLower(),
-                    members.ConstValue.TrimStart('"').TrimEnd('"'),
-                    //members.Type.Equals("string", StringComparison.InvariantCultureIgnoreCase) ? ("new String("+members.ConstValue+")") : ("\""+members.ConstValue+"\""),
+                    members.Static.ToString().ToLower(),
+                    members.StaticValue.TrimStart('"').TrimEnd('"'),
+                    //members.Type.Equals("string", StringComparison.InvariantCultureIgnoreCase) ? ("new String("+members.StaticValue+")") : ("\""+members.StaticValue+"\""),
                     members.IsArray.ToString().ToLower(),
                     members.length,
                     //FIX MEEEEEEEE
@@ -58,7 +58,7 @@ namespace FauxMessages
                     t = "std_msgs." + t;
                 mt = t.Replace(".", "/");
             }
-            return new KeyValuePair<string, MsgFieldInfo>(member.Name, new MsgFieldInfo(member.Name, member.IsLiteral, member.Type, member.Const, member.ConstValue, member.IsArray, member.length, member.meta));
+            return new KeyValuePair<string, MsgFieldInfo>(member.Name, new MsgFieldInfo(member.Name, member.IsLiteral, member.Type, member.Static, member.StaticValue, member.IsArray, member.length, member.meta));
         }
 
         public static Dictionary<string, MsgFieldInfo> Instantiate(IEnumerable<SingleType> stuff)

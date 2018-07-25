@@ -8,16 +8,16 @@ namespace FauxMessages
 {
     public class MsgFieldInfo
     {
-        public string ConstVal;
+        public string StaticVal;
         public bool IsArray;
-        public bool IsConst;
+        public bool IsStatic;
         public bool IsPrimitive;
         public bool IsComplexType;
         public int Length = -1;
         public string Name;
         public string Type;
 
-        public MsgFieldInfo(string name, bool isPrimitive, string type, bool isConst, string constVal, bool isArray,
+        public MsgFieldInfo(string name, bool isPrimitive, string type, bool isStatic, string StaticVal, bool isArray,
             string lengths, bool complexType)
         {
             Name = name;
@@ -25,8 +25,8 @@ namespace FauxMessages
             Type = type;
             IsPrimitive = isPrimitive;
             IsComplexType = complexType;
-            IsConst = isConst;
-            ConstVal = constVal;
+            IsStatic = isStatic;
+            StaticVal = StaticVal;
             if (!string.IsNullOrWhiteSpace(lengths))
             {
                 Length = int.Parse(lengths);
