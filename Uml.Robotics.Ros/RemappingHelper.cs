@@ -42,13 +42,23 @@ namespace Uml.Robotics.Ros
             // If ROS.ROS_MASTER_URI was not explicitely set by the program calling Init, and was not passed in as a remapping argument, then try to find it in ENV.
             if (string.IsNullOrEmpty(ROS.ROS_MASTER_URI))
             {
-                ROS.ROS_MASTER_URI = Environment.GetEnvironmentVariable("ROS_MASTER_URI");
+                IDictionary _vars;
+
+                //check user env first, then machine if user doesn't have uri defined.
+                if ((_vars = Environment.GetEnvironmentVariables(EnvironmentVariableTarget.User)).Contains("ROS_MASTER_URI")
+                    || (_vars = Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Machine)).Contains("ROS_MASTER_URI"))
+                    ROS.ROS_MASTER_URI = (string)_vars["ROS_MASTER_URI"];
             }
 
             // If ROS.ROS_HOSTNAME was not explicitely set by the program calling Init, check the environment.
             if (string.IsNullOrEmpty(ROS.ROS_HOSTNAME))
             {
-                ROS.ROS_HOSTNAME = Environment.GetEnvironmentVariable("ROS_HOSTNAME");
+                IDictionary _vars;
+
+                //check user env first, then machine if user doesn't have uri defined.
+                if ((_vars = Environment.GetEnvironmentVariables(EnvironmentVariableTarget.User)).Contains("ROS_HOSTNAME")
+                    || (_vars = Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Machine)).Contains("ROS_HOSTNAME"))
+                    ROS.ROS_HOSTNAME = (string)_vars["ROS_HOSTNAME"];
             }
 
             // if it is defined now, then add to remapping, or replace remapping (in the case it was explicitly set by program AND was passed as remapping arg)
