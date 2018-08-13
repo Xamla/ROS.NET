@@ -82,11 +82,18 @@ namespace FauxMessages
         {
             string[] pieces = s.Split('/');
             string package = null;
+            // sometimes, a string can contain the char '/', such as the following line:
+            // string CONTENT_JSON = "application/json"
             if (pieces.Length == 2)
             {
+                if (s.ToLower().Contains("string") && !MsgFile.resolver.ContainsKey(pieces[0]))
+                    goto ResolvingStep;
+                
                 package = pieces[0];
                 s = pieces[1];
             }
+
+            ResolvingStep:
             SingleType st = new SingleType(package, s, extraindent);
             parent.resolve(st);
             WhatItIs(parent, st);

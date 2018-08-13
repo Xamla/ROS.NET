@@ -11,10 +11,12 @@ namespace FauxMessages
 {
     public class SingleType
     {
-        // TODO extend check to other C# keywords
-        private static readonly string[] CSharpKeywords = { "object", "params", "namespace", "const", "static" };
+        // c# keywords listed on https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ as of August 1st, 2018
+        private static readonly string[] reserved_keywords = { "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "using static", "virtual", "void", "volatile", "while" };
+        private static readonly string[] contextual_keywords = { "add", "alias", "ascending", "async", "await", "descending", "dynamic", "from", "get", "global", "group", "into", "join", "let", "nameof", "orderby", "partial", "partial", "remove", "select", "set", "value", "var", "when", "where", "where", "yield" };
+        private static readonly string[] CSharpKeywords = reserved_keywords.Union(contextual_keywords).ToArray();
 
-        private static bool IsCSharpKeyword(string name)
+        public static bool IsCSharpKeyword(string name)
         {
             return CSharpKeywords.Contains(name);
         }
@@ -107,9 +109,16 @@ namespace FauxMessages
                 otherstuff = " = " + parts[1];
             }
 
-            if (IsCSharpKeyword(name))
+            if (name == parent.Name.Split(".").Last() || !MsgFileLocation.IsValidCSharpIdentifier(name) && name.Length > 0)
             {
-                name = "@" + name;
+                if (IsCSharpKeyword(name))
+                {
+                    name = "@" + name;
+                }
+                else if (MsgFileLocation.IsValidCSharpIdentifier(name) && name == parent.Name.Split(".").Last())
+                    name = "_" + name;
+                else
+                    throw new ArgumentException(String.Format("Variable '{0}' from '{1}' is not a compatible C# identifier name\n\tAll variable names must conform to C# Language Specifications (refer to this StackOverflow answer: https://stackoverflow.com/a/950651/4036588)\n", name, parent.msgFileLocation.Path));
             }
 
             for (int i = 2; i < s.Length; i++)
@@ -151,14 +160,16 @@ namespace FauxMessages
                 string prefix = "", suffix = "";
                 if (isconst)
                 {
-                    if (!type.Equals("string", StringComparison.OrdinalIgnoreCase))
-                    {
+                    // why can't strings be constants?
+
+                    //if (!type.Equals("string", StringComparison.OrdinalIgnoreCase))
+                    //{
                         if (KnownStuff.IsPrimitiveType(this))
                             prefix = "const ";
                         else
                             prefix = "static readonly ";
                         wantsconstructor = false;
-                    }
+                    //}
                 }
 
                 string t = KnownStuff.GetNamespacedType(this, type);
@@ -225,10 +236,19 @@ namespace FauxMessages
                 name = parts[0];
                 otherstuff = " = " + parts[1];
             }
-            if (IsCSharpKeyword(name))
+
+            if (name == parent.Name.Split(".").Last() || !MsgFileLocation.IsValidCSharpIdentifier(name) && name.Length > 0)
             {
-                name = "@" + name;
+                if (IsCSharpKeyword(name))
+                {
+                    name = "@" + name;
+                }
+                else if (MsgFileLocation.IsValidCSharpIdentifier(name) && name == parent.Name.Split(".").Last())
+                    name = "_" + name;
+                else
+                    throw new ArgumentException(String.Format("Variable '{0}' from '{1}' is not a compatible C# identifier name\n\tAll variable names must conform to C# Language Specifications (refer to this StackOverflow answer: https://stackoverflow.com/a/950651/4036588)\n", name, parent.msgFileLocation.Path));
             }
+
             for (int i = 2; i < backup.Length; i++)
                 otherstuff += " " + backup[i];
             if (otherstuff.Contains('='))
@@ -269,10 +289,12 @@ namespace FauxMessages
                 string prefix = "", suffix = "";
                 if (isconst)
                 {
-                    if (!Type.Equals("string", StringComparison.OrdinalIgnoreCase))
-                    {
+                    // why can't strings be constants?
+
+                    //if (!Type.Equals("string", StringComparison.OrdinalIgnoreCase))
+                    //{
                         prefix = "const ";
-                    }
+                    //}
                 }
                 if (otherstuff.Contains('='))
                     if (wantsconstructor)

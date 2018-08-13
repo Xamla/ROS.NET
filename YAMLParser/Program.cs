@@ -21,6 +21,7 @@ namespace YAMLParser
         static List<ActionFile> actionFiles = new List<ActionFile>();
         private static ILogger Logger { get; set; }
         const string DEFAULT_OUTPUT_FOLDERNAME = "Messages";
+        static readonly string[] required_packages = {"std_msgs", "geometry_msgs", /*"actionlib_msgs",*/ "sensor_msgs"};
 
         public static void Main(params string[] args)
         {
@@ -45,8 +46,10 @@ namespace YAMLParser
                     return 1;
                 }
 
+                List<string> dirs = messageDirectories.Value().Split(',').ToList();
+
                 Program.Run(
-                    messageDirectories.HasValue() ? messageDirectories.Values : null,
+                    messageDirectories.HasValue() ? dirs : null,
                     assemblies.HasValue() ? assemblies.Values : null,
                     outputDirectory.HasValue() ? outputDirectory.Value() : null,
                     interactive.HasValue(),
@@ -127,6 +130,8 @@ namespace YAMLParser
                 Console.WriteLine("Looking in " + d);
                 MsgFileLocator.findMessages(paths, pathssrv, actionFileLocations, d);
             }
+            // sort paths by priority
+            paths = MsgFileLocator.sortMessages(paths);
 
             // first pass: create all msg files (and register them in static resolver dictionary)
             var baseTypes = MessageTypeRegistry.Default.GetTypeNames().ToList();
@@ -163,6 +168,14 @@ namespace YAMLParser
             actionFiles = actionFileParser.GenerateRosMessageClasses();
             //var actionFiles = new List<ActionFile>();
 
+            if (!StdMsgsProcessed()) // may seem obvious, but needed so that all other messages can build...
+            {
+                string resolvedPkgs = String.Join(", ", MsgFile.resolver.Keys.OrderBy(x => x.ToString()).ToArray());
+                Console.WriteLine("Missing at least one of the following ROS packages: [\"" + String.Join("\", \"", required_packages) + "\"]. Exiting...");
+                Console.WriteLine("resolver's keys: [" + resolvedPkgs + "]");
+                return;
+            }
+
             if (paths.Count + pathssrv.Count > 0)
             {
                 MakeTempDir(outputdir);
@@ -182,6 +195,11 @@ namespace YAMLParser
                 Console.WriteLine("Finished. Press enter.");
                 Console.ReadLine();
             }
+        }
+
+        public static bool StdMsgsProcessed()
+        {
+            return required_packages.All(c => MsgFile.resolver.ContainsKey(c));
         }
 
         private static void MakeTempDir(string outputdir)

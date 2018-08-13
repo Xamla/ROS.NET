@@ -470,7 +470,7 @@ namespace FauxMessages
                     def[i] = def[i].Replace("  ", " ");
                 def[i] = def[i].Replace(" = ", "=");
             }
-            GUTS = GUTS.Replace("$MYMESSAGEDEFINITION", "@\"" + def.Aggregate("", (current, d) => current + (d + "\n")).Trim('\n') + "\"");
+            GUTS = GUTS.Replace("$MYMESSAGEDEFINITION", "@\"" + def.Aggregate("", (current, d) => current + (d + "\n")).Trim('\n').Replace("\"", "\"\"") + "\"");
             GUTS = GUTS.Replace("$MYHASHEADER", HasHeader.ToString().ToLower());
             GUTS = GUTS.Replace("$MYFIELDS", GeneratedDictHelper.Length > 5 ? "{{" + GeneratedDictHelper + "}}" : "()");
             GUTS = GUTS.Replace("$NULLCONSTBODY", "");
